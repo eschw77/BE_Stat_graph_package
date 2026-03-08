@@ -5,7 +5,7 @@
 #' Power operator function
 #' @param X a matrix or vector of binary data, in our case nodes in a graph
 #' @return a vector of p probabilities for P(A_i = 1) for i in 1,...,p
-#' 
+#' @export
 power_expand <- function(X) { 
     n <- nrow(X)
     p <- ncol(X)
@@ -23,6 +23,7 @@ power_expand <- function(X) {
 #' @param p the number of nodes in the graph or RVs in a BELIEF regression
 #' @param i the index of the node or RV for which we want to capture interactions
 #' @return a vector of indices for the interactions that include A_i
+#' @export
 J_i <- function(j, p){ 
     return(which(bitwAnd(0:(2^p - 1), 2^(j-1)) != 0))
 } 
@@ -36,7 +37,7 @@ J_i <- function(j, p){
 #' @param X an n x (p-1) matrix of predictors
 #' @param Y an n-length vector of the response variable (left out node)
 #' @return a vector of coefficient estimates obtained from the least squares solution
-#'
+#' @export 
 compute_lse <- function(X, Y) {
   # X is n x p-1, Y is left out node
   cal_X <- power_expand(X)
@@ -69,9 +70,9 @@ compute_log_likelihood <- function(beta_hat, X, Y) {
 #' @param A an n x p binary data matrix
 #' @param node_j the index of node we are regressing on
 #' @return a list containing the test statistic and p-value for the Wilks LRT
-#' 
+#' @export 
 
-Wilks_LRT_Test <- function(A, node_j) {
+wilks_LRT_test <- function(A, node_j) {
   p_values <- numeric(ncol(A))
   p_values[node_j] <- NA  # No test for the node itself
   n <- nrow(A)
