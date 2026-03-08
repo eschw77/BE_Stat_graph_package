@@ -65,7 +65,7 @@ Generate binary (±1) samples from an Ising MRF with specified graph structure
 and target marginal probabilities.
 }
 \examples{
-edges <- matrix(c(1,2, 2,3, 3,4, 4,5, 1,5), ncol = 2, byrow = TRUE)
+edges <- matrix(c(1,2, 2,3, 3,4, 4,5, 1,5), ncol = 2, byrow = TRUE) for CI 
 probs <- c(0.7, 0.4, 0.6, 0.3, 0.8)
 result <- ising_generate(
   n_nodes      = 5,

@@ -4,7 +4,7 @@
 #' Enforces CI conditions X_i ⊥ X_j | X_rest iff (i,j) is not an edge.
 #' Uses an Ising MRF: P(X) ∝ exp(X^T Θ X / 2 + b^T X), X ∈ {-1, +1}^n.
 #' Bias terms b_i are calibrated so that P(X_i = +1) ≈ target_probs[i].
-#'
+#' Similar to the Cai et al. 2019 paper on MRFs and the gut microbiome
 #' @name isinggraph-package
 #' @docType package
 NULL
@@ -14,11 +14,15 @@ NULL
 #' @keywords internal
 .build_theta <- function(n_nodes, edges, weights = NULL) {
   theta <- matrix(0, n_nodes, n_nodes)
+  # If not in edges, encode conditional independence (zero coupling)
   if (is.null(edges) || nrow(edges) == 0) return(theta)
+  # If weights not provided, assign random weights in [-0.8, -0.3] ∪ [0.3, 0.8]
+  # stay away from poles of 0,1 to ideally have a model with less extreme conditional relations
   if (is.null(weights)) {
     set.seed(NULL)
     weights <- runif(nrow(edges), 0.3, 0.8) * sample(c(-1, 1), nrow(edges), replace = TRUE)
   }
+  # Fill in the symmetric coupling matrix Theta
   for (k in seq_len(nrow(edges))) {
     i <- edges[k, 1]; j <- edges[k, 2]
     theta[i, j] <- weights[k]
@@ -30,6 +34,8 @@ NULL
 
 #' Single Gibbs sweep over all nodes (±1 encoding)
 #' @keywords internal
+#' For each node i, sample X_i given the current state of all other nodes and 
+#' the parameters theta and bias 
 .gibbs_sweep <- function(x, theta, bias) {
   n <- length(x)
   for (i in seq_len(n)) {
@@ -46,6 +52,7 @@ NULL
 
 #' Run Gibbs sampler
 #' @keywords internal
+#' Draw samples from the Ising model defined by theta and bias
 .gibbs_sample <- function(theta, bias, n_samples, burn_in, seed = NULL) {
   if (!is.null(seed)) set.seed(seed)
   n  <- length(bias)
@@ -128,7 +135,7 @@ NULL
 #'   }
 #'
 #' @examples
-#' edges <- matrix(c(1,2, 2,3, 3,4, 4,5, 1,5), ncol = 2, byrow = TRUE)
+#' edges <- matrix(c(1,2, 2,3, 3,4, 4,5, 1,5), ncol = 2, byrow = TRUE) for CI 
 #' probs <- c(0.7, 0.4, 0.6, 0.3, 0.8)
 #' result <- ising_generate(
 #'   n_nodes      = 5,
@@ -172,7 +179,7 @@ ising_generate <- function(n_nodes,
   # ── Build coupling matrix ─────────────────────────────────────────────────
   theta <- .build_theta(n_nodes, edges, weights)
 
-  # ── Calibrate bias terms ──────────────────────────────────────────────────
+  # ── Calibrate bias terms, i.e. adjust for target probabilities ────────────
   if (calibrate) {
     if (verbose) cat("Calibrating bias terms...\n")
     cal   <- .calibrate_bias(theta, target_probs,
@@ -219,7 +226,12 @@ ising_generate <- function(n_nodes,
 #' edges  <- matrix(c(1,2, 2,3, 3,4), ncol = 2, byrow = TRUE)
 #' result <- ising_generate(4, edges, seed = 1)
 #' ising_ci_test(result$samples, edges)
-#'
+#' 
+#'              X_j = +1    X_j = -1
+#' X_i = +1      n11         n1m
+#' X_i = -1      nm1         nmm
+#' OR = (n11 * nmm) / (n1m * nm1)  => log(OR) = log((n11 * nmm) / (n1m * nm1))
+#' this smooths for cells that are zero by adding 0.5 to prevent log(0) issues
 #' @export
 ising_ci_test <- function(samples, edges, min_stratum_size = 10) {
   n      <- ncol(samples)

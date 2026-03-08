@@ -45,9 +45,57 @@ compute_lse <- function(X, Y) {
   return(beta_hat)
 }
 
+# internal function for computing log-likelihood given the MLE 
+#' @param beta_hat a vector of coefficient estimates obtained from the least squares solution
+#' @param X an n x (p-1) matrix of predictors
+#' @param Y an n-length vector of the response variable (left out node)
+#' @keywords internal
 
+compute_log_likelihood <- function(beta_hat, X, Y) {
+  cal_X <- power_expand(X)
+  n <- nrow(cal_X)
+  eta <- as.vector(cal_X %*% as.numeric(beta_hat))
+  terms <- 1 + as.numeric(Y) * eta
 
-#' Estimate beta coefficients for a BELIEF regression
-#' The BELIEF model is E[B|A] = beta^T A^\otimes, where A^\otimes is the power expansion of A. This function estimates the beta coefficients using least squares estimation.
-#' @param A an n x p matrix of binary data for the nodes in the graph
-#' return
+  if (any(terms <= 0)) {
+    warning("Some terms in the log-likelihood are non-positive, returning -Inf")
+    return(-Inf)
+  }
+
+  -n * log(2) + sum(log(terms))
+}
+
+#' Run the Wilks Likelihood Ratio Test for Binary Data
+#' @param A an n x p binary data matrix
+#' @param node_j the index of node we are regressing on
+#' @return a list containing the test statistic and p-value for the Wilks LRT
+#' 
+
+Wilks_LRT_Test <- function(A, node_j) {
+  p_values <- numeric(ncol(A))
+  p_values[node_j] <- NA  # No test for the node itself
+  n <- nrow(A)
+  p <- ncol(A)
+
+  # Define response and predictors
+  A_j <- A[, node_j]
+  A_minus_j <- A[, -node_j, drop = FALSE]
+  
+  # Fit full model
+  full_beta <- compute_lse(A_minus_j, A_j)
+  full_log_likelihood <- compute_log_likelihood(full_beta, A_minus_j, A_j)
+  
+  # Test over all nodes neq j
+  for (k in (1:p)[-node_j]) {
+    # Fit null model without node k
+    A_minus_jk <- A_minus_j[, -which((1:(p-1)) == k), drop = FALSE]
+    null_beta <- compute_lse(A_minus_jk, A_j)
+    null_log_likelihood <- compute_log_likelihood(null_beta, A_minus_jk, A_j)
+  
+    # Compute test statistic and p-value
+    test_statistic <- 2 * (full_log_likelihood - null_log_likelihood)
+    p_value <- pchisq(test_statistic, df = 2^p - 2^(p-1), lower.tail = FALSE)
+    p_values[k] <- p_value 
+  }
+  return(p_values)
+}

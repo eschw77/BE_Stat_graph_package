@@ -9,4 +9,15 @@
 \description{
 Run Gibbs sampler
 }
+\keyword{Draw}
+\keyword{Ising}
+\keyword{and}
+\keyword{bias}
+\keyword{by}
+\keyword{defined}
+\keyword{from}
 \keyword{internal}
+\keyword{model}
+\keyword{samples}
+\keyword{the}
+\keyword{theta}

@@ -27,4 +27,9 @@ edges  <- matrix(c(1,2, 2,3, 3,4), ncol = 2, byrow = TRUE)
 result <- ising_generate(4, edges, seed = 1)
 ising_ci_test(result$samples, edges)
 
+             X_j = +1    X_j = -1
+X_i = +1      n11         n1m
+X_i = -1      nm1         nmm
+OR = (n11 * nmm) / (n1m * nm1)  => log(OR) = log((n11 * nmm) / (n1m * nm1))
+this smooths for cells that are zero by adding 0.5 to prevent log(0) issues
 }

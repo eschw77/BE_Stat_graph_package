@@ -10,6 +10,7 @@
 Enforces CI conditions X_i ⊥ X_j | X_rest iff (i,j) is not an edge.
 Uses an Ising MRF: P(X) ∝ exp(X^T Θ X / 2 + b^T X), X ∈ {-1, +1}^n.
 Bias terms b_i are calibrated so that P(X_i = +1) ≈ target_probs\link{i}.
+Similar to the Cai et al. 2019 paper on MRFs and the gut microbiome
 }
 \author{
 \strong{Maintainer}: Evan Schwartz \email{eschw@unc.edu}

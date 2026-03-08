@@ -9,4 +9,22 @@
 \description{
 Single Gibbs sweep over all nodes (±1 encoding)
 }
+\keyword{For}
+\keyword{X_i}
+\keyword{all}
+\keyword{and}
+\keyword{bias}
+\keyword{current}
+\keyword{each}
+\keyword{given}
+\keyword{i,}
 \keyword{internal}
+\keyword{node}
+\keyword{nodes}
+\keyword{of}
+\keyword{other}
+\keyword{parameters}
+\keyword{sample}
+\keyword{state}
+\keyword{the}
+\keyword{theta}
