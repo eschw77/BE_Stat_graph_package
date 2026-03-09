@@ -70,7 +70,7 @@ NULL
 
 #' Estimate marginal P(X_i = +1) via short Gibbs run
 #' @keywords internal
-.estimate_marginals <- function(theta, bias, n_est = 3000, burn_in = 500, seed = NULL) {
+.estimate_marginals <- function(theta, bias, n_est = 7000, burn_in = 500, seed = NULL) {
   samp <- .gibbs_sample(theta, bias, n_est, burn_in, seed)
   colMeans(samp == 1L)
 }
@@ -80,7 +80,7 @@ NULL
 #'
 #' Uses coordinate-wise Newton updates on the marginal mismatch.
 #' @keywords internal
-.calibrate_bias <- function(theta, target_probs, n_est = 3000, burn_in = 500,
+.calibrate_bias <- function(theta, target_probs, n_est = 7000, burn_in = 500,
                              tol = 0.01, max_iter = 30, verbose = FALSE, seed = NULL) {
   n    <- length(target_probs)
   bias <- qlogis(target_probs)   # initialise with marginal log-odds (ignores coupling)
