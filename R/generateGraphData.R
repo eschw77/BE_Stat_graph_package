@@ -29,7 +29,7 @@ NULL
   }
   # Handle weak edges if provided
   if (!is.null(weak_edges)) {
-    weak_weights <- runif(nrow(weak_edges), 0.05, 0.15 ) * sample(c(-1, 1), nrow(weak_edges), replace = TRUE)
+    weak_weights <- runif(nrow(weak_edges), 0.1, 0.25 ) * sample(c(-1, 1), nrow(weak_edges), replace = TRUE)
     for (k in seq_len(nrow(weak_edges))) {
       i <- weak_edges[k, 1]; j <- weak_edges[k, 2]
       theta[i, j] <- weak_weights[k]
@@ -280,6 +280,9 @@ ising_generate <- function(n_nodes,
 #' @export
 ising_ci_test <- function(samples, edges, min_stratum_size = 10) {
   n      <- ncol(samples)
+  if (n < 2) {
+    stop("samples must have at least 2 columns (nodes) for pairwise CI testing.")
+  }
   pairs  <- combn(n, 2, simplify = FALSE)
   edge_set <- apply(edges, 1, function(r) paste(sort(r), collapse = "-"))
 
