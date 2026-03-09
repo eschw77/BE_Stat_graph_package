@@ -19,7 +19,6 @@ NULL
   # If weights not provided, assign random weights in [-0.8, -0.3] ∪ [0.3, 0.8]
   # stay away from poles of 0,1 to ideally have a model with less extreme conditional relations
   if (is.null(weights)) {
-    set.seed(NULL)
     weights <- runif(nrow(edges), 0.3, 0.8) * sample(c(-1, 1), nrow(edges), replace = TRUE)
   }
   # Fill in the symmetric coupling matrix Theta
@@ -53,8 +52,7 @@ NULL
 #' Run Gibbs sampler
 #' @keywords internal
 #' Draw samples from the Ising model defined by theta and bias
-.gibbs_sample <- function(theta, bias, n_samples, burn_in, seed = NULL) {
-  if (!is.null(seed)) set.seed(seed)
+.gibbs_sample <- function(theta, bias, n_samples, burn_in) {
   n  <- length(bias)
   x  <- sample(c(-1, 1), n, replace = TRUE)
   mat <- matrix(0L, nrow = n_samples, ncol = n)
@@ -70,31 +68,37 @@ NULL
 
 #' Estimate marginal P(X_i = +1) via short Gibbs run
 #' @keywords internal
-.estimate_marginals <- function(theta, bias, n_est = 7000, burn_in = 500, seed = NULL) {
-  samp <- .gibbs_sample(theta, bias, n_est, burn_in, seed)
+.estimate_marginals <- function(theta, bias, n_est = 7000, burn_in = 500) {
+  samp <- .gibbs_sample(theta, bias, n_est, burn_in)
   colMeans(samp == 1L)
 }
 
 
 #' Calibrate bias vector so P(X_i=+1) ≈ target_probs
 #'
-#' Uses coordinate-wise Newton updates on the marginal mismatch.
+#' Uses coordinate-wise Newton updates on the marginal mismatch with adaptive step size.
 #' @keywords internal
-.calibrate_bias <- function(theta, target_probs, n_est = 7000, burn_in = 500,
-                             tol = 0.01, max_iter = 30, verbose = FALSE, seed = NULL) {
+.calibrate_bias <- function(theta, target_probs, n_est = 10000, burn_in = 1000,
+                             tol = 0.01, max_iter = 30, verbose = FALSE) {
   n    <- length(target_probs)
   bias <- qlogis(target_probs)   # initialise with marginal log-odds (ignores coupling)
 
   for (iter in seq_len(max_iter)) {
-    est <- .estimate_marginals(theta, bias, n_est, burn_in, seed)
+    est <- .estimate_marginals(theta, bias, n_est, burn_in)
     err <- est - target_probs
     if (verbose) {
       cat(sprintf("Iter %2d | max|err| = %.4f\n", iter, max(abs(err))))
     }
     if (max(abs(err)) < tol) break
-    # Newton step: d(logit(p))/dp = 1/(p*(1-p)); update bias to correct mismatch
-    grad <- err / pmax(est * (1 - est), 1e-4)
-    bias <- bias - grad
+    # Adaptive Newton step with damping and gradient clipping
+    # d(logit(p))/dp = 1/(p*(1-p))
+    grad <- err / pmax(est * (1 - est), 1e-3)
+    # Clip gradient to prevent extreme updates
+    grad <- pmax(pmin(grad, 2), -2) 
+    # Use adaptive step size: larger when error is large, smaller when close
+    max_err <- max(abs(err))
+    step_size <- ifelse(max_err > 0.1, 0.3, 0.7)
+    bias <- bias - step_size * grad
   }
   list(bias = bias, final_est = est, converged = max(abs(err)) < tol)
 }
@@ -176,6 +180,9 @@ ising_generate <- function(n_nodes,
   if (any(edges[, 1] == edges[, 2]))
     stop("Self-loops are not allowed.")
 
+  # ── Set seed for reproducibility ──────────────────────────────────────────
+  if (!is.null(seed)) set.seed(seed)
+
   # ── Build coupling matrix ─────────────────────────────────────────────────
   theta <- .build_theta(n_nodes, edges, weights)
 
@@ -184,18 +191,18 @@ ising_generate <- function(n_nodes,
     if (verbose) cat("Calibrating bias terms...\n")
     cal   <- .calibrate_bias(theta, target_probs,
                              tol = tol, max_iter = max_iter,
-                             verbose = verbose, seed = seed)
+                             verbose = verbose)
     bias  <- cal$bias
     est_p <- cal$final_est
     if (!cal$converged && verbose)
       warning("Bias calibration did not fully converge. Try increasing max_iter or n_samples.")
   } else {
     bias  <- qlogis(target_probs)
-    est_p <- .estimate_marginals(theta, bias, seed = seed)
+    est_p <- .estimate_marginals(theta, bias)
   }
 
   # ── Draw samples ──────────────────────────────────────────────────────────
-  samp <- .gibbs_sample(theta, bias, n_samples, burn_in, seed)
+  samp <- .gibbs_sample(theta, bias, n_samples, burn_in)
   colnames(samp) <- paste0("A", seq_len(n_nodes))
 
   list(
