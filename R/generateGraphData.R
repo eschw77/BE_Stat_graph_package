@@ -14,18 +14,19 @@ NULL
 #' @keywords internal
 .build_theta <- function(n_nodes, edges, weak_edges = NULL, weights = NULL) {
   theta <- matrix(0, n_nodes, n_nodes)
-  # If not in edges, encode conditional independence (zero coupling)
-  if (is.null(edges) || nrow(edges) == 0) return(theta)
-  # If weights not provided, assign random weights in [-0.8, -0.3] ∪ [0.3, 0.8]
-  # stay away from poles of 0,1 to ideally have a model with less extreme conditional relations
-  if (is.null(weights)) {
-    weights <- runif(nrow(edges), 0.3, 0.8) * sample(c(-1, 1), nrow(edges), replace = TRUE)
-  }
-  # Fill in the symmetric coupling matrix Theta
-  for (k in seq_len(nrow(edges))) {
-    i <- edges[k, 1]; j <- edges[k, 2]
-    theta[i, j] <- weights[k]
-    theta[j, i] <- weights[k]
+  # Process strong edges if provided
+  if (!is.null(edges) && nrow(edges) > 0) {
+    # If weights not provided, assign random weights in [-0.8, -0.3] ∪ [0.3, 0.8]
+    # stay away from poles of 0,1 to ideally have a model with less extreme conditional relations
+    if (is.null(weights)) {
+      weights <- runif(nrow(edges), 0.3, 0.8) * sample(c(-1, 1), nrow(edges), replace = TRUE)
+    }
+    # Fill in the symmetric coupling matrix Theta
+    for (k in seq_len(nrow(edges))) {
+      i <- edges[k, 1]; j <- edges[k, 2]
+      theta[i, j] <- weights[k]
+      theta[j, i] <- weights[k]
+    }
   }
   # Handle weak edges if provided
   if (!is.null(weak_edges)) {

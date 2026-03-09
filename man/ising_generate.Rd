@@ -24,7 +24,8 @@ ising_generate(
 \item{n_nodes}{Integer. Number of nodes.}
 
 \item{edges}{Two-column integer matrix of edges (1-indexed). Each row is
-one undirected edge (i, j) with i < j.}
+one undirected edge (i, j) with i < j. Can be NULL or empty
+if \code{weak_edges} is provided; otherwise required.}
 
 \item{weak_edges}{Two-column integer matrix of edges (1-indexed). Each row is
 one undirected edge (i, j) with i < j, expected to have weaker coupling than those in edges,
