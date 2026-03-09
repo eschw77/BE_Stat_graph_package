@@ -68,10 +68,9 @@ compute_log_likelihood <- function(beta_hat, X, Y) {
 
 #' Run the Wilks Likelihood Ratio Test for Binary Data
 #' @param A an n x p binary data matrix
-#' @param node_j the index of node we are regressing on
-#' @return a matrix of p-values for the likelihood ratio test comparing the full model (with all predictors) to the null model (without each predictor) for node_j. The diagonal entry corresponding to node_j is NA since we do not test the node against itself.
-#' The matrix should be symmetric and have NA on the diagonal, with p-values for the tests in the off-diagonal entries. This hopefully should prevent multiple testing control on repeated tests 
-#' 
+#' @return a matrix of p-values for the likelihood ratio test comparing the full model (with all predictors) to the null model (without each predictor) for each node. The diagonal entries are NA since we do not test nodes against themselves.
+#' The matrix is symmetric with NA on the diagonal, with p-values for the tests in the off-diagonal entries to allow for multiple testing control on repeated tests 
+#' @export
 
 wilks_LRT_test <- function(A) {
   p_values <- matrix(NA_real_, nrow = ncol(A), ncol = ncol(A))
