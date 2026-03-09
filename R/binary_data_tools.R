@@ -74,7 +74,7 @@ compute_log_likelihood <- function(beta_hat, X, Y) {
 #' 
 
 wilks_LRT_test <- function(A) {
-  p_values <- mat(NA, nrow = ncol(A), ncol =ncol(A) )
+  p_values <- matrix(NA, nrow = ncol(A), ncol = ncol(A))
   p_values[node_j, node_j] <- NA  # No test for the node against itself
   n <- nrow(A)
   p <- ncol(A)
