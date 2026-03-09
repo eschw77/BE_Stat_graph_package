@@ -7,15 +7,14 @@
 .calibrate_bias(
   theta,
   target_probs,
-  n_est = 3000,
-  burn_in = 500,
+  n_est = 10000,
+  burn_in = 1000,
   tol = 0.01,
   max_iter = 30,
-  verbose = FALSE,
-  seed = NULL
+  verbose = FALSE
 )
 }
 \description{
-Uses coordinate-wise Newton updates on the marginal mismatch.
+Uses coordinate-wise Newton updates on the marginal mismatch with adaptive step size.
 }
 \keyword{internal}

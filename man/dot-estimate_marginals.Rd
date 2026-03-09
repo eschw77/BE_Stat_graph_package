@@ -4,7 +4,7 @@
 \alias{.estimate_marginals}
 \title{Estimate marginal P(X_i = +1) via short Gibbs run}
 \usage{
-.estimate_marginals(theta, bias, n_est = 3000, burn_in = 500, seed = NULL)
+.estimate_marginals(theta, bias, n_est = 7000, burn_in = 500)
 }
 \description{
 Estimate marginal P(X_i = +1) via short Gibbs run

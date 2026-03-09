@@ -11,6 +11,8 @@ plot_ising_true(
   vertex.color = "lightblue",
   edge.color = "gray50",
   edge.width = 2,
+  weak.edge.color = "gray80",
+  weak.edge.lty = 2,
   main = "True Ising Model Graph",
   show.weights = FALSE
 )
@@ -30,6 +32,10 @@ Default: "circle".}
 \item{edge.color}{Character. Color of the edges. Default: "gray50".}
 
 \item{edge.width}{Numeric. Width of the edges. Default: 2.}
+
+\item{weak.edge.color}{Character. Color of the weak edges. Default: "gray80".}
+
+\item{weak.edge.lty}{Numeric. Line type for weak edges (1=solid, 2=dashed, etc.). Default: 2.}
 
 \item{main}{Character. Main title for the plot. Default: "True Ising Model Graph".}
 

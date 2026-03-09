@@ -7,12 +7,14 @@
 plot_ising_estimated(
   samples,
   edges = NULL,
+  weak_edges = NULL,
   threshold = 0.1,
   min_stratum_size = 10,
   layout = "circle",
   vertex.size = 25,
   vertex.color = "lightgreen",
   edge.color.correct = "darkgreen",
+  edge.color.weak = "orange",
   edge.color.false = "red",
   edge.color.default = "gray50",
   edge.width = 2,
@@ -26,6 +28,8 @@ plot_ising_estimated(
 
 \item{edges}{Optional. Two-column matrix of true edges for comparison. If provided,
 edges will be colored to distinguish true positives from false positives.}
+
+\item{weak_edges}{Optional. Two-column matrix of true weak edges for comparison.}
 
 \item{threshold}{Numeric. Threshold for |mean_log_OR| above which an edge is drawn.
 Higher values = more conservative (fewer edges). Default: 0.1.}
@@ -42,6 +46,9 @@ Default: "circle".}
 
 \item{edge.color.correct}{Character. Color for correctly identified edges (true positives).
 Only used if \code{edges} is provided. Default: "darkgreen".}
+
+\item{edge.color.weak}{Character. Color for correctly identified weak edges.
+Only used if \code{weak_edges} is provided. Default: "orange".}
 
 \item{edge.color.false}{Character. Color for incorrectly identified edges (false positives).
 Only used if \code{edges} is provided. Default: "red".}

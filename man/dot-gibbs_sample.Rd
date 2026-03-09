@@ -4,7 +4,7 @@
 \alias{.gibbs_sample}
 \title{Run Gibbs sampler}
 \usage{
-.gibbs_sample(theta, bias, n_samples, burn_in, seed = NULL)
+.gibbs_sample(theta, bias, n_samples, burn_in)
 }
 \description{
 Run Gibbs sampler

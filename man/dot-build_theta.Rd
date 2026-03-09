@@ -4,7 +4,7 @@
 \alias{.build_theta}
 \title{Build the coupling matrix from an edge list}
 \usage{
-.build_theta(n_nodes, edges, weights = NULL)
+.build_theta(n_nodes, edges, weak_edges = NULL, weights = NULL)
 }
 \description{
 Build the coupling matrix from an edge list

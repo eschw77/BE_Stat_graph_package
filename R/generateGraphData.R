@@ -12,7 +12,7 @@ NULL
 # ── Internal helpers ──────────────────────────────────────────────────────────
 #' Build the coupling matrix from an edge list
 #' @keywords internal
-.build_theta <- function(n_nodes, edges, weights = NULL) {
+.build_theta <- function(n_nodes, edges, weak_edges = NULL, weights = NULL) {
   theta <- matrix(0, n_nodes, n_nodes)
   # If not in edges, encode conditional independence (zero coupling)
   if (is.null(edges) || nrow(edges) == 0) return(theta)
@@ -26,6 +26,15 @@ NULL
     i <- edges[k, 1]; j <- edges[k, 2]
     theta[i, j] <- weights[k]
     theta[j, i] <- weights[k]
+  }
+  # Handle weak edges if provided
+  if (!is.null(weak_edges)) {
+    weak_weights <- runif(nrow(weak_edges), 0.05, 0.15 ) * sample(c(-1, 1), nrow(weak_edges), replace = TRUE)
+    for (k in seq_len(nrow(weak_edges))) {
+      i <- weak_edges[k, 1]; j <- weak_edges[k, 2]
+      theta[i, j] <- weak_weights[k]
+      theta[j, i] <- weak_weights[k]
+    }
   }
   theta
 }
@@ -112,6 +121,9 @@ NULL
 #' @param n_nodes   Integer. Number of nodes.
 #' @param edges     Two-column integer matrix of edges (1-indexed). Each row is
 #'                  one undirected edge (i, j) with i < j.
+#' @param weak_edges Two-column integer matrix of edges (1-indexed). Each row is
+#'                  one undirected edge (i, j) with i < j, expected to have weaker coupling than those in edges, 
+#'                  default NULL. If provided, these edges will be assigned smaller random weights than those in edges.
 #' @param target_probs Numeric vector of length \code{n_nodes} with target
 #'                  P(X_i = +1) for each node. Values must be in (0, 1).
 #'                  Default: all 0.5.
@@ -154,6 +166,7 @@ NULL
 #' @export
 ising_generate <- function(n_nodes,
                            edges,
+                           weak_edges = NULL,
                            target_probs = rep(0.5, n_nodes),
                            weights      = NULL,
                            n_samples    = 1000,
@@ -180,11 +193,26 @@ ising_generate <- function(n_nodes,
   if (any(edges[, 1] == edges[, 2]))
     stop("Self-loops are not allowed.")
 
+  if (!is.null(weak_edges)) {
+    weak_edges <- matrix(as.integer(weak_edges), ncol = 2)
+    if (any(weak_edges < 1 | weak_edges > n_nodes))
+      stop("Weak edge indices must be between 1 and n_nodes.")
+    if (any(weak_edges[, 1] == weak_edges[, 2]))
+      stop("Self-loops are not allowed in weak edges.")
+    # Ensure weak edges do not overlap with strong edges
+    strong_set <- apply(edges, 1, function(r) paste(sort(r), collapse = "-"))
+    weak_set   <- apply(weak_edges, 1, function(r) paste(sort(r), collapse = "-"))
+    if (length(intersect(strong_set, weak_set)) > 0)
+      stop("Weak edges cannot overlap with strong edges.")
+  }
+
+
+
   # ── Set seed for reproducibility ──────────────────────────────────────────
   if (!is.null(seed)) set.seed(seed)
 
   # ── Build coupling matrix ─────────────────────────────────────────────────
-  theta <- .build_theta(n_nodes, edges, weights)
+  theta <- .build_theta(n_nodes, edges, weak_edges, weights)
 
   # ── Calibrate bias terms, i.e. adjust for target probabilities ────────────
   if (calibrate) {
@@ -211,7 +239,8 @@ ising_generate <- function(n_nodes,
     bias           = bias,
     target_probs   = target_probs,
     estimated_probs = est_p,
-    edges          = edges
+    edges          = edges,
+    weak_edges     = weak_edges
   )
 }
 

@@ -8,6 +8,7 @@ and target marginal probabilities.}
 ising_generate(
   n_nodes,
   edges,
+  weak_edges = NULL,
   target_probs = rep(0.5, n_nodes),
   weights = NULL,
   n_samples = 1000,
@@ -24,6 +25,10 @@ ising_generate(
 
 \item{edges}{Two-column integer matrix of edges (1-indexed). Each row is
 one undirected edge (i, j) with i < j.}
+
+\item{weak_edges}{Two-column integer matrix of edges (1-indexed). Each row is
+one undirected edge (i, j) with i < j, expected to have weaker coupling than those in edges,
+default NULL. If provided, these edges will be assigned smaller random weights than those in edges.}
 
 \item{target_probs}{Numeric vector of length \code{n_nodes} with target
 P(X_i = +1) for each node. Values must be in (0, 1).
