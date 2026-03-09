@@ -74,36 +74,34 @@ compute_log_likelihood <- function(beta_hat, X, Y) {
 #' 
 
 wilks_LRT_test <- function(A) {
-  p_values <- matrix(NA, nrow = ncol(A), ncol = ncol(A))
-  p_values[node_j, node_j] <- NA  # No test for the node against itself
+  p_values <- matrix(NA_real_, nrow = ncol(A), ncol = ncol(A))
   n <- nrow(A)
   p <- ncol(A)
+
   for (node_j in 1:p) {
-    # Define response and predictors
     A_j <- A[, node_j]
     A_minus_j <- A[, -node_j, drop = FALSE]
-    
-    # Fit full model
+
     full_beta <- compute_lse(A_minus_j, A_j)
     full_log_likelihood <- compute_log_likelihood(full_beta, A_minus_j, A_j)
-    
-    # Test over all nodes neq j
-    # To get a upper triangular matrix of p-values, we only test for k > j
+
     for (k in (1:p)[-node_j]) {
       if (k <= node_j) {
-        next  # Skip tests for k <= j to maintain upper triangular structure
+        next
       }
 
-      # Fit null model without node k
-      A_minus_jk <- A_minus_j[, -which((1:(p-1)) == k), drop = FALSE]
+      # Convert global column index k to local index in A_minus_j, accounting for the removed node_j
+      local_k <- k - as.integer(k > node_j)
+      A_minus_jk <- A_minus_j[, -local_k, drop = FALSE]
+
       null_beta <- compute_lse(A_minus_jk, A_j)
       null_log_likelihood <- compute_log_likelihood(null_beta, A_minus_jk, A_j)
-    
-      # Compute test statistic and p-value
+
       test_statistic <- 2 * (full_log_likelihood - null_log_likelihood)
-      p_value <- pchisq(test_statistic, df = 2^p - 2^(p-1), lower.tail = FALSE)
-      p_values[node_j, k] <- p_value 
+      p_value <- pchisq(test_statistic, df = (2^p - 2^(p - 1)), lower.tail = FALSE)
+      p_values[node_j, k] <- p_value
     }
   }
+
   return(p_values)
 }
