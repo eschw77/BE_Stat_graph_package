@@ -120,7 +120,8 @@ NULL
 #'
 #' @param n_nodes   Integer. Number of nodes.
 #' @param edges     Two-column integer matrix of edges (1-indexed). Each row is
-#'                  one undirected edge (i, j) with i < j.
+#'                  one undirected edge (i, j) with i < j. Can be NULL or empty
+#'                  if \code{weak_edges} is provided; otherwise required.
 #' @param weak_edges Two-column integer matrix of edges (1-indexed). Each row is
 #'                  one undirected edge (i, j) with i < j, expected to have weaker coupling than those in edges, 
 #'                  default NULL. If provided, these edges will be assigned smaller random weights than those in edges.
@@ -180,18 +181,26 @@ ising_generate <- function(n_nodes,
   # ── Input validation ──────────────────────────────────────────────────────
   stopifnot(
     is.numeric(n_nodes), n_nodes >= 2,
-    is.matrix(edges), ncol(edges) == 2,
     length(target_probs) == n_nodes,
     all(target_probs > 0 & target_probs < 1),
     n_samples >= 1,
     burn_in   >= 0
   )
 
-  edges <- matrix(as.integer(edges), ncol = 2)
-  if (any(edges < 1 | edges > n_nodes))
-    stop("Edge indices must be between 1 and n_nodes.")
-  if (any(edges[, 1] == edges[, 2]))
-    stop("Self-loops are not allowed.")
+  # Allow edges to be NULL or empty if weak_edges is non-empty
+  if (is.null(edges) || (is.matrix(edges) && nrow(edges) == 0)) {
+    if (is.null(weak_edges) || (is.matrix(weak_edges) && nrow(weak_edges) == 0)) {
+      stop("Either edges or weak_edges must be non-empty.")
+    }
+    edges <- matrix(integer(0), ncol = 2)
+  } else {
+    stopifnot(is.matrix(edges), ncol(edges) == 2)
+    edges <- matrix(as.integer(edges), ncol = 2)
+    if (any(edges < 1 | edges > n_nodes))
+      stop("Edge indices must be between 1 and n_nodes.")
+    if (any(edges[, 1] == edges[, 2]))
+      stop("Self-loops are not allowed.")
+  }
 
   if (!is.null(weak_edges)) {
     weak_edges <- matrix(as.integer(weak_edges), ncol = 2)
