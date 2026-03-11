@@ -373,12 +373,14 @@ ising_summary <- function(result) {
 #' @export
 generate_probs <- function(p, type){
     if(type == "unif"){
-        probs <- runif(p)
+        probs <- runif(p) #vector of length p with U(0,1) entries
     } else if(type == "equidistant"){
         probs <- seq(0.1, 0.9, length.out = p)
     }
     else if (type == "bimodal"){
-        probs <- c(runif(p/2, 0.1, 0.3), runif(p/2, 0.7, 0.9))
+      n_low <- floor(p / 2)
+      n_high <- ceiling(p / 2)
+      probs <- c(runif(n_low, 0.1, 0.3), runif(n_high, 0.7, 0.9))
     } else {
        probs <- rep(0.5, p) # default to 0.5 if no type is specified
     }
