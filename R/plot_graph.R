@@ -313,3 +313,108 @@ plot_ising_estimated <- function(samples,
   
   invisible(list(graph = g, ci_results = ci_results))
 }
+
+
+
+
+#' Function to plot detected conditional dependence graph
+#' @param avg_results Data frame with columns node_i, node_j, reject_at_alpha
+#' @param threshold Numeric. Threshold for reject_at_alpha to consider an edge detected. Default is 0.5. Usually should set to 1-alpha for a specific alpha level.
+#' @param main Title for the plot. Default is "Detected Graph at Threshold".
+#' @return Invisibly returns the igraph object of the detected graph.
+#' @export 
+#' 
+plot_detected_graph <- function(avg_results, threshold = 0.5, main = "Detected Graph at Threshold") {
+
+  if (!requireNamespace("igraph", quietly = TRUE)) {
+    stop("Package 'igraph' is required for plotting. Install it with: install.packages('igraph')")
+  }
+  
+  # Filter edges where reject_at_alpha >= threshold
+  detected_edges <- avg_results %>%
+    dplyr::filter(reject_at_alpha >= threshold) %>%
+    dplyr::select(node_i, node_j)
+  
+  # Get number of nodes from avg_results
+  n_nodes <- max(c(avg_results$node_i, avg_results$node_j))
+  
+  if (nrow(detected_edges) == 0) {
+    # No edges detected
+    g <- igraph::make_empty_graph(n = n_nodes, directed = FALSE)
+  } else {
+    # Create edge list and graph
+    edge_list <- as.matrix(detected_edges)
+    g <- igraph::graph_from_edgelist(edge_list, directed = FALSE)
+    # Ensure all nodes are included even if isolated
+    g <- igraph::add_vertices(g, n_nodes - igraph::vcount(g))
+  }
+  
+  # Set vertex names
+  igraph::V(g)$name <- 1:n_nodes
+  
+  # Plot with consistent layout
+  layout <- igraph::layout_in_circle(g)
+  
+  plot(g,
+       layout = layout,
+       vertex.size = 30,
+       vertex.label = igraph::V(g)$name,
+       vertex.label.cex = 1.2,
+       edge.width = 2,
+       edge.color = "black",
+       main = main)
+  
+  # Also print summary
+  cat("Threshold:", threshold, "\n")
+  cat("Detected edges:\n")
+  if (nrow(detected_edges) > 0) {
+    print(detected_edges)
+  } else {
+    cat("  No edges detected at this threshold\n")
+  }
+  
+  invisible(g)
+}
+
+
+#' Plot histograms of theta values (e.g. level of CI) for specified edges across simulations
+#' @param theta_list List of theta matrices (p x p) from multiple simulations
+#' @param edge_list Two-column matrix of node pairs (i, j) for which to plot histograms of theta values, should typically be the ising edges input 
+#' @param main_prefix Prefix for the main title of each histogram, default is "Theta Hist"
+#' @return Invisibly returns NULL after plotting histograms
+#' @export
+#'
+plot_theta_histograms <- function(theta_list, edge_list, main_prefix = "Theta Hist") {
+  if (length(theta_list) == 0) {
+    return(invisible(NULL))
+  }
+
+  pair_idx <- edge_list
+
+  n_plots <- nrow(pair_idx)
+  if (n_plots == 0) {
+    return(invisible(NULL))
+  }
+
+  n_cols <- ceiling(sqrt(n_plots))
+  n_rows <- ceiling(n_plots / n_cols)
+  old_par <- par(mfrow = c(n_rows, n_cols))
+  on.exit(par(old_par), add = TRUE)
+
+  for (k in 1:n_plots) {
+    i <- pair_idx[k, 1]
+    j <- pair_idx[k, 2]
+    vals <- vapply(theta_list, function(th) th[i, j], numeric(1))
+    hist(
+      vals,
+      breaks = 20,
+      col = "gray70",
+      border = "white",
+      main = paste0(main_prefix, ": ", i, "-", j),
+      xlab = expression(theta),
+      ylab = "Frequency"
+    )
+  }
+
+  invisible(NULL)
+}
