@@ -2,7 +2,7 @@
 % Please edit documentation in R/binary_data_tools.R
 \name{wilks_LRT_test_e_val}
 \alias{wilks_LRT_test_e_val}
-\title{Run the Wilks Likelihood Ratio Test for Binary Data}
+\title{Construct split likelihood-ratio e-values for binary data}
 \usage{
 wilks_LRT_test_e_val(A)
 }
@@ -10,9 +10,10 @@ wilks_LRT_test_e_val(A)
 \item{A}{an n x p binary data matrix}
 }
 \value{
-a matrix of p-values for the likelihood ratio test comparing the full model (with all predictors) to the null model (without each predictor) for each node. The diagonal entries are NA since we do not test nodes against themselves.
-The matrix is symmetric with NA on the diagonal, with p-values for the tests in the off-diagonal entries to allow for multiple testing control on repeated tests
+an upper-triangular matrix of e-values comparing the full model
+(with all predictors) to the null model (without each predictor) for each
+node. The diagonal and lower-triangular entries are \code{NA}.
 }
 \description{
-Run the Wilks Likelihood Ratio Test for Binary Data
+Construct split likelihood-ratio e-values for binary data
 }

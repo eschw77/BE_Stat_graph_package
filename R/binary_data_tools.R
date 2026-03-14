@@ -105,10 +105,11 @@ wilks_LRT_test <- function(A) {
   return(p_values)
 }
 
-#' Run the Wilks Likelihood Ratio Test for Binary Data
+#' Construct split likelihood-ratio e-values for binary data
 #' @param A an n x p binary data matrix
-#' @return a matrix of p-values for the likelihood ratio test comparing the full model (with all predictors) to the null model (without each predictor) for each node. The diagonal entries are NA since we do not test nodes against themselves.
-#' The matrix is symmetric with NA on the diagonal, with p-values for the tests in the off-diagonal entries to allow for multiple testing control on repeated tests 
+#' @return an upper-triangular matrix of e-values comparing the full model
+#'   (with all predictors) to the null model (without each predictor) for each
+#'   node. The diagonal and lower-triangular entries are `NA`.
 #' @export
 
 wilks_LRT_test_e_val <- function(A) {
@@ -118,37 +119,41 @@ wilks_LRT_test_e_val <- function(A) {
 
   # Split the data in half into two matrices, randomly
   n_half <- floor(n / 2)
-  idx <- sample(n)
+  idx <- sample.int(n)
   idx1 <- idx[1:n_half]
   idx2 <- idx[(n_half + 1):n]
-  A1 <- A[idx1, , drop = FALSE]
-  A0 <- A[idx2, , drop = FALSE]
+  A0 <- A[idx1, , drop = FALSE]
+  A1 <- A[idx2, , drop = FALSE]
+
+  split_e_value <- function(train_A, eval_A, node_j, k) {
+    train_j <- train_A[, node_j]
+    train_minus_j <- train_A[, -node_j, drop = FALSE]
+    eval_j <- eval_A[, node_j]
+    eval_minus_j <- eval_A[, -node_j, drop = FALSE]
+
+    local_k <- k - as.integer(k > node_j)
+    train_minus_jk <- train_minus_j[, -local_k, drop = FALSE]
+    eval_minus_jk <- eval_minus_j[, -local_k, drop = FALSE]
+
+    full_beta <- compute_lse(train_minus_j, train_j)
+    null_beta <- compute_lse(train_minus_jk, train_j)
+
+    full_log_likelihood <- compute_log_likelihood(full_beta, eval_minus_j, eval_j)
+    null_log_likelihood <- compute_log_likelihood(null_beta, eval_minus_jk, eval_j)
+
+    exp(full_log_likelihood - null_log_likelihood)
+  }
 
   for (node_j in 1:p) {
-    # use the first half of the data (A0) for the full model to compute the MLE and log-likelihood
-    A0_j <- A0[, node_j]
-    A0_minus_j <- A0[, -node_j, drop = FALSE]
-
-    full_beta <- compute_lse(A0_minus_j, A0_j)
-    full_log_likelihood <- compute_log_likelihood(full_beta, A0_minus_j, A0_j)
-
     for (k in (1:p)[-node_j]) {
       if (k <= node_j) {
         next
       }
-      # Use the second half of the data (A1) for the null model to compute the e-value
-      A1_j <- A1[, node_j]
-      A1_minus_j <- A1[, -node_j, drop = FALSE]
 
-      # Convert global column index k to local index in A0_minus_j, accounting for the removed node_j
-      # this doesn't need to be the MLE, 
-      local_k <- k - as.integer(k > node_j)
-      A1_minus_jk <- A1_minus_j[, -local_k, drop = FALSE]
+      e_01 <- split_e_value(A0, A1, node_j, k)
+      e_10 <- split_e_value(A1, A0, node_j, k)
 
-      null_beta <- compute_lse(A1_minus_jk, A1_j)
-      null_log_likelihood <- compute_log_likelihood(null_beta, A1_minus_jk, A1_j)
-
-      e_values[node_j, k] <- exp(full_log_likelihood - null_log_likelihood)
+      e_values[node_j, k] <- mean(c(e_01, e_10))
     }
   }
   return(e_values)
