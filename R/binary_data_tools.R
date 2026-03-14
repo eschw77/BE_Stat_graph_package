@@ -135,12 +135,14 @@ wilks_LRT_test_e_val <- function(A) {
 
     local_k <- k - as.integer(k > node_j)
     eval_minus_jk <- eval_minus_j[, -local_k, drop = FALSE]
+    
+    # estimators fitted on opposite halves of the data
+    full_beta <- compute_lse(eval_minus_j, eval_j)           # D1, alternative
+    null_beta <- compute_lse(train_minus_jk, train_j)        # D0, null
 
-    full_beta <- compute_lse(train_minus_j, train_j)
-    null_beta <- compute_lse(eval_minus_jk, eval_j)
-
-    full_log_likelihood <- compute_log_likelihood(full_beta, eval_minus_j, eval_j)
-    null_log_likelihood <- compute_log_likelihood(null_beta, eval_minus_jk, eval_j)
+    #log-likelihoods evaluated on A0 for both models
+    full_log_likelihood <- compute_log_likelihood(full_beta, train_minus_j, train_j)
+    null_log_likelihood <- compute_log_likelihood(null_beta, train_minus_jk, train_j)
 
     exp(full_log_likelihood - null_log_likelihood)
   }
