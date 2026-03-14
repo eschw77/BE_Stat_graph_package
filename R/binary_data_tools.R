@@ -105,3 +105,54 @@ wilks_LRT_test <- function(A) {
   return(p_values)
 }
 
+#' Run the Wilks Likelihood Ratio Test for Binary Data
+#' @param A an n x p binary data matrix
+#' @return a matrix of p-values for the likelihood ratio test comparing the full model (with all predictors) to the null model (without each predictor) for each node. The diagonal entries are NA since we do not test nodes against themselves.
+#' The matrix is symmetric with NA on the diagonal, with p-values for the tests in the off-diagonal entries to allow for multiple testing control on repeated tests 
+#' @export
+
+wilks_LRT_test_e_val <- function(A) {
+  e_values <- matrix(NA_real_, nrow = ncol(A), ncol = ncol(A))
+  n <- nrow(A)
+  p <- ncol(A)
+
+  # Split the data in half into two matrices, randomly
+  n_half <- floor(n / 2)
+  idx <- sample(n)
+  idx1 <- idx[1:n_half]
+  idx2 <- idx[(n_half + 1):n]
+  A1 <- A[idx1, , drop = FALSE]
+  A0 <- A[idx2, , drop = FALSE]
+
+  for (node_j in 1:p) {
+    # use the first half of the data (A0) for the full model to compute the MLE and log-likelihood
+    A0_j <- A0[, node_j]
+    A0_minus_j <- A0[, -node_j, drop = FALSE]
+
+    full_beta <- compute_lse(A0_minus_j, A0_j)
+    full_log_likelihood <- compute_log_likelihood(full_beta, A0_minus_j, A0_j)
+
+    for (k in (1:p)[-node_j]) {
+      if (k <= node_j) {
+        next
+      }
+      # Use the second half of the data (A1) for the null model to compute the e-value
+      A1_j <- A1[, node_j]
+      A1_minus_j <- A1[, -node_j, drop = FALSE]
+
+      # Convert global column index k to local index in A0_minus_j, accounting for the removed node_j
+      # this doesn't need to be the MLE, 
+      local_k <- k - as.integer(k > node_j)
+      A1_minus_jk <- A1_minus_j[, -local_k, drop = FALSE]
+
+      null_beta <- compute_lse(A1_minus_jk, A1_j)
+      null_log_likelihood <- compute_log_likelihood(null_beta, A1_minus_jk, A1_j)
+
+      test_statistic <- 2 * (full_log_likelihood - null_log_likelihood)
+      p_value <- pchisq(test_statistic, df = (2^p - 2^(p - 1)), lower.tail = FALSE)
+      p_values[node_j, k] <- p_value
+    }
+  }
+
+  return(p_values)
+}
