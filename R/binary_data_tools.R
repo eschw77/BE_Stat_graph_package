@@ -74,7 +74,6 @@ compute_log_likelihood <- function(beta_hat, X, Y) {
 
 wilks_LRT_test <- function(A) {
   p_values <- matrix(NA_real_, nrow = ncol(A), ncol = ncol(A))
-  n <- nrow(A)
   p <- ncol(A)
 
   for (node_j in 1:p) {
@@ -106,6 +105,9 @@ wilks_LRT_test <- function(A) {
 }
 
 #' Construct split likelihood-ratio e-values for binary data
+#' The full model is fit on one split and evaluated on the other split, while
+#' the null model is re-fit on the evaluation split so the denominator is the
+#' null likelihood maximized on the held-out data.
 #' @param A an n x p binary data matrix
 #' @return an upper-triangular matrix of e-values comparing the full model
 #'   (with all predictors) to the null model (without each predictor) for each
@@ -132,11 +134,10 @@ wilks_LRT_test_e_val <- function(A) {
     eval_minus_j <- eval_A[, -node_j, drop = FALSE]
 
     local_k <- k - as.integer(k > node_j)
-    train_minus_jk <- train_minus_j[, -local_k, drop = FALSE]
     eval_minus_jk <- eval_minus_j[, -local_k, drop = FALSE]
 
     full_beta <- compute_lse(train_minus_j, train_j)
-    null_beta <- compute_lse(train_minus_jk, train_j)
+    null_beta <- compute_lse(eval_minus_jk, eval_j)
 
     full_log_likelihood <- compute_log_likelihood(full_beta, eval_minus_j, eval_j)
     null_log_likelihood <- compute_log_likelihood(null_beta, eval_minus_jk, eval_j)
@@ -149,7 +150,7 @@ wilks_LRT_test_e_val <- function(A) {
       if (k <= node_j) {
         next
       }
-
+      
       e_01 <- split_e_value(A0, A1, node_j, k)
       e_10 <- split_e_value(A1, A0, node_j, k)
 

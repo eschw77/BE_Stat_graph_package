@@ -44,3 +44,79 @@ test_that("invalid inputs throw errors", {
   expect_error(ising_generate(3, matrix(c(1,2), ncol=2),
                                target_probs = c(0, 0.5, 0.5)))     # prob = 0
 })
+
+test_that("wilks_LRT_test_e_val maximizes the null on held-out data", {
+  A <- matrix(
+    c(
+      0, 0, 0, 0,
+      0, 0, 1, 1,
+      0, 1, 0, 1,
+      0, 1, 1, 0,
+      1, 0, 0, 1,
+      1, 0, 1, 0,
+      1, 1, 0, 0,
+      1, 1, 1, 1,
+      0, 0, 0, 1,
+      0, 1, 0, 0,
+      1, 0, 0, 0,
+      1, 1, 1, 0
+    ),
+    ncol = 4,
+    byrow = TRUE
+  )
+
+  compute_manual_log_likelihood <- function(beta_hat, X, Y) {
+    cal_X <- power_expand(X)
+    n <- nrow(cal_X)
+    eta <- as.vector(cal_X %*% as.numeric(beta_hat))
+    terms <- 1 + as.numeric(Y) * eta
+
+    if (any(terms <= 0)) {
+      return(-Inf)
+    }
+
+    -n * log(2) + sum(log(terms))
+  }
+
+  split_e_value_manual <- function(train_A, eval_A, node_j, k) {
+    train_j <- train_A[, node_j]
+    train_minus_j <- train_A[, -node_j, drop = FALSE]
+    eval_j <- eval_A[, node_j]
+    eval_minus_j <- eval_A[, -node_j, drop = FALSE]
+
+    local_k <- k - as.integer(k > node_j)
+    eval_minus_jk <- eval_minus_j[, -local_k, drop = FALSE]
+
+    full_beta <- compute_lse(train_minus_j, train_j)
+    null_beta <- compute_lse(eval_minus_jk, eval_j)
+
+    full_log_likelihood <- compute_manual_log_likelihood(full_beta, eval_minus_j, eval_j)
+    null_log_likelihood <- compute_manual_log_likelihood(null_beta, eval_minus_jk, eval_j)
+
+    exp(full_log_likelihood - null_log_likelihood)
+  }
+
+  set.seed(2026)
+  actual <- wilks_LRT_test_e_val(A)
+
+  set.seed(2026)
+  idx <- sample.int(nrow(A))
+  n_half <- floor(nrow(A) / 2)
+  A0 <- A[idx[1:n_half], , drop = FALSE]
+  A1 <- A[idx[(n_half + 1):nrow(A)], , drop = FALSE]
+
+  expected <- matrix(NA_real_, nrow = ncol(A), ncol = ncol(A))
+  for (node_j in seq_len(ncol(A))) {
+    for (k in seq_len(ncol(A))[-node_j]) {
+      if (k <= node_j) {
+        next
+      }
+
+      e_01 <- split_e_value_manual(A0, A1, node_j, k)
+      e_10 <- split_e_value_manual(A1, A0, node_j, k)
+      expected[node_j, k] <- mean(c(e_01, e_10))
+    }
+  }
+
+  expect_equal(actual, expected)
+})

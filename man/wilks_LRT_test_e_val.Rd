@@ -17,3 +17,8 @@ node. The diagonal and lower-triangular entries are \code{NA}.
 \description{
 Construct split likelihood-ratio e-values for binary data
 }
+\details{
+The full model is fit on one split and evaluated on the other split. The
+null model is re-fit on the evaluation split so the denominator is the null
+likelihood maximized on the held-out data.
+}
