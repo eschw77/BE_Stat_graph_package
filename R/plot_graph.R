@@ -323,7 +323,6 @@ plot_ising_estimated <- function(samples,
 #' @param main Title for the plot. Default is "Detected Graph at Threshold".
 #' @return Invisibly returns the igraph object of the detected graph.
 #' @export 
-#' 
 plot_detected_graph <- function(avg_results, threshold = 0.5, main = "Detected Graph at Threshold") {
 
   if (!requireNamespace("igraph", quietly = TRUE)) {
@@ -383,7 +382,6 @@ plot_detected_graph <- function(avg_results, threshold = 0.5, main = "Detected G
 #' @param main_prefix Prefix for the main title of each histogram, default is "Theta Hist"
 #' @return Invisibly returns NULL after plotting histograms
 #' @export
-#'
 plot_theta_histograms <- function(theta_list, edge_list, main_prefix = "Theta Hist") {
   if (length(theta_list) == 0) {
     return(invisible(NULL))

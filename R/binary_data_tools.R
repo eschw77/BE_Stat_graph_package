@@ -148,11 +148,8 @@ wilks_LRT_test_e_val <- function(A) {
       null_beta <- compute_lse(A1_minus_jk, A1_j)
       null_log_likelihood <- compute_log_likelihood(null_beta, A1_minus_jk, A1_j)
 
-      test_statistic <- 2 * (full_log_likelihood - null_log_likelihood)
-      p_value <- pchisq(test_statistic, df = (2^p - 2^(p - 1)), lower.tail = FALSE)
-      p_values[node_j, k] <- p_value
+      e_values[node_j, k] <- exp(full_log_likelihood - null_log_likelihood)
     }
   }
-
-  return(p_values)
+  return(e_values)
 }
