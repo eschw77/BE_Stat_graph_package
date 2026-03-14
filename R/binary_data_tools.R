@@ -134,8 +134,8 @@ wilks_LRT_test_e_val <- function(A) {
     eval_minus_j <- eval_A[, -node_j, drop = FALSE]
 
     local_k <- k - as.integer(k > node_j)
-    eval_minus_jk <- eval_minus_j[, -local_k, drop = FALSE]
-    
+    train_minus_jk <- train_minus_j[, -local_k, drop = FALSE]
+
     # estimators fitted on opposite halves of the data
     full_beta <- compute_lse(eval_minus_j, eval_j)           # D1, alternative
     null_beta <- compute_lse(train_minus_jk, train_j)        # D0, null
