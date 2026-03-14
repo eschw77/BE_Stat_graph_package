@@ -2,9 +2,12 @@
 % Please edit documentation in R/binary_data_tools.R
 \name{wilks_LRT_test_e_val}
 \alias{wilks_LRT_test_e_val}
-\title{Construct split likelihood-ratio e-values for binary data}
+\title{Construct split likelihood-ratio e-values for binary data
+The full model is fit on one split and evaluated on the other split, while
+the null model is re-fit on the evaluation split so the denominator is the
+null likelihood maximized on the held-out data.}
 \usage{
-wilks_LRT_test_e_val(A)
+wilks_LRT_test_e_val(A, n_splits = 2)
 }
 \arguments{
 \item{A}{an n x p binary data matrix}
@@ -16,9 +19,7 @@ node. The diagonal and lower-triangular entries are \code{NA}.
 }
 \description{
 Construct split likelihood-ratio e-values for binary data
-}
-\details{
-The full model is fit on one split and evaluated on the other split. The
-null model is re-fit on the evaluation split so the denominator is the null
-likelihood maximized on the held-out data.
+The full model is fit on one split and evaluated on the other split, while
+the null model is re-fit on the evaluation split so the denominator is the
+null likelihood maximized on the held-out data.
 }

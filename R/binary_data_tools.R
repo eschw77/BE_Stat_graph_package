@@ -114,50 +114,56 @@ wilks_LRT_test <- function(A) {
 #'   node. The diagonal and lower-triangular entries are `NA`.
 #' @export
 
-wilks_LRT_test_e_val <- function(A) {
-  e_values <- matrix(NA_real_, nrow = ncol(A), ncol = ncol(A))
+wilks_LRT_test_e_val <- function(A, n_splits = 2) {
   n <- nrow(A)
   p <- ncol(A)
-
-  # Split the data in half into two matrices, randomly
-  n_half <- floor(n / 2)
-  idx <- sample.int(n)
-  idx1 <- idx[1:n_half]
-  idx2 <- idx[(n_half + 1):n]
-  A0 <- A[idx1, , drop = FALSE]
-  A1 <- A[idx2, , drop = FALSE]
-
+  
   split_e_value <- function(train_A, eval_A, node_j, k) {
-    train_j <- train_A[, node_j]
-    train_minus_j <- train_A[, -node_j, drop = FALSE]
-    eval_j <- eval_A[, node_j]
-    eval_minus_j <- eval_A[, -node_j, drop = FALSE]
-
-    local_k <- k - as.integer(k > node_j)
+    train_j        <- train_A[, node_j]
+    train_minus_j  <- train_A[, -node_j, drop = FALSE]
+    eval_j         <- eval_A[, node_j]
+    eval_minus_j   <- eval_A[, -node_j, drop = FALSE]
+    
+    local_k        <- k - as.integer(k > node_j)
     train_minus_jk <- train_minus_j[, -local_k, drop = FALSE]
-
-    # estimators fitted on opposite halves of the data
-    full_beta <- compute_lse(eval_minus_j, eval_j)           # D1, alternative
-    null_beta <- compute_lse(train_minus_jk, train_j)        # D0, null
-
-    #log-likelihoods evaluated on A0 for both models
+    
+    # full model fitted on D1 (eval), null fitted on D0 (train)
+    full_beta <- compute_lse(eval_minus_j, eval_j)
+    null_beta <- compute_lse(train_minus_jk, train_j)
+    
+    # both likelihoods evaluated on D0 (train)
     full_log_likelihood <- compute_log_likelihood(full_beta, train_minus_j, train_j)
     null_log_likelihood <- compute_log_likelihood(null_beta, train_minus_jk, train_j)
-
+    
     exp(full_log_likelihood - null_log_likelihood)
   }
-
-  for (node_j in 1:p) {
-    for (k in (1:p)[-node_j]) {
-      if (k <= node_j) {
-        next
+  
+  # accumulate e-values across splits
+  e_values_accum <- matrix(0, nrow = p, ncol = p)
+  n_half <- floor(n / 2)
+  
+  for (split in seq_len(n_splits)) {
+    idx    <- sample.int(n)
+    idx1   <- idx[1:n_half]
+    idx2   <- idx[(n_half + 1):n]
+    A0     <- A[idx1, , drop = FALSE]  # D0 = train
+    A1     <- A[idx2, , drop = FALSE]  # D1 = eval
+    
+    for (node_j in 1:p) {
+      for (k in (1:p)[-node_j]) {
+        if (k <= node_j) next
+        
+        # each direction is a valid e-value per equation (9)
+        # average over both directions per equation (10)
+        e_01 <- split_e_value(A0, A1, node_j, k)
+        e_10 <- split_e_value(A1, A0, node_j, k)
+        
+        e_values_accum[node_j, k] <- e_values_accum[node_j, k] + 
+                                      mean(c(e_01, e_10))
       }
-      
-      e_01 <- split_e_value(A0, A1, node_j, k)
-      e_10 <- split_e_value(A1, A0, node_j, k)
-
-      e_values[node_j, k] <- mean(c(e_01, e_10))
     }
   }
+  # average over splits — valid e-value by linearity of expectation
+  e_values <- e_values_accum / n_splits
   return(e_values)
 }
