@@ -109,12 +109,14 @@ wilks_LRT_test <- function(A) {
 #' the null model is re-fit on the evaluation split so the denominator is the
 #' null likelihood maximized on the held-out data.
 #' @param A an n x p binary data matrix
+#' @param n_splits the number of random splits to perform (default is 2 for a single split, but can be increased for more stable estimates)
+#' @param seed an optional random seed for reproducibility of splits
 #' @return an upper-triangular matrix of e-values comparing the full model
 #'   (with all predictors) to the null model (without each predictor) for each
 #'   node. The diagonal and lower-triangular entries are `NA`.
 #' @export
 
-wilks_LRT_test_e_val <- function(A, n_splits = 2) {
+wilks_LRT_test_e_val <- function(A, n_splits = 2, seed = NULL) {
   n <- nrow(A)
   p <- ncol(A)
   
@@ -141,6 +143,10 @@ wilks_LRT_test_e_val <- function(A, n_splits = 2) {
   # accumulate e-values across splits
   e_values_accum <- matrix(0, nrow = p, ncol = p)
   n_half <- floor(n / 2)
+  
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
   
   for (split in seq_len(n_splits)) {
     idx    <- sample.int(n)

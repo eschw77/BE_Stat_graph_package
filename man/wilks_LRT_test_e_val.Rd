@@ -7,10 +7,14 @@ The full model is fit on one split and evaluated on the other split, while
 the null model is re-fit on the evaluation split so the denominator is the
 null likelihood maximized on the held-out data.}
 \usage{
-wilks_LRT_test_e_val(A, n_splits = 2)
+wilks_LRT_test_e_val(A, n_splits = 2, seed = NULL)
 }
 \arguments{
 \item{A}{an n x p binary data matrix}
+
+\item{n_splits}{the number of random splits to perform (default is 2 for a single split, but can be increased for more stable estimates)}
+
+\item{seed}{an optional random seed for reproducibility of splits}
 }
 \value{
 an upper-triangular matrix of e-values comparing the full model
