@@ -140,8 +140,27 @@ wilks_LRT_test_e_val <- function(A, n_splits = 2, seed = NULL) {
     exp(full_log_likelihood - null_log_likelihood)
   }
   
-  # accumulate e-values across splits
-  e_values_accum <- matrix(0, nrow = p, ncol = p)
+  # compute cross-fit e-values for a single split
+  compute_split_e_values <- function(A0, A1, p) {
+    split_e_vals <- matrix(NA_real_, nrow = p, ncol = p)
+    
+    for (node_j in 1:p) {
+      for (k in (1:p)[-node_j]) {
+        if (k <= node_j) next
+        
+        # each direction is a valid e-value per equation (9)
+        # average over both directions per equation (10)
+        e_01 <- split_e_value(A0, A1, node_j, k)
+        e_10 <- split_e_value(A1, A0, node_j, k)
+        
+        split_e_vals[node_j, k] <- mean(c(e_01, e_10))
+      }
+    }
+    return(split_e_vals)
+  }
+  
+  # accumulate e-value matrices across multiple random splits
+  e_values_list <- list()
   n_half <- floor(n / 2)
   
   if (!is.null(seed)) {
@@ -155,21 +174,11 @@ wilks_LRT_test_e_val <- function(A, n_splits = 2, seed = NULL) {
     A0     <- A[idx1, , drop = FALSE]  # D0 = train
     A1     <- A[idx2, , drop = FALSE]  # D1 = eval
     
-    for (node_j in 1:p) {
-      for (k in (1:p)[-node_j]) {
-        if (k <= node_j) next
-        
-        # each direction is a valid e-value per equation (9)
-        # average over both directions per equation (10)
-        e_01 <- split_e_value(A0, A1, node_j, k)
-        e_10 <- split_e_value(A1, A0, node_j, k)
-        
-        e_values_accum[node_j, k] <- e_values_accum[node_j, k] + 
-                                      mean(c(e_01, e_10))
-      }
-    }
+    # compute cross-fit e-values for this split
+    e_values_list[[split]] <- compute_split_e_values(A0, A1, p)
   }
-  # average over splits — valid e-value by linearity of expectation
-  e_values <- e_values_accum / n_splits
+  
+  # average cross-fit e-value matrices across splits — valid e-value by linearity of expectation
+  e_values <- Reduce("+", e_values_list) / n_splits
   return(e_values)
 }
