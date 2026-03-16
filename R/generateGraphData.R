@@ -386,3 +386,43 @@ generate_probs <- function(p, type){
     }
     return(probs)
 }
+
+
+#' Generate a multinomial distribution from a specified Theta matrix
+#' @param theta Coupling matrix (p x p) defining the Ising model.
+#' @param bias Optional bias vector (length p). If NULL, assumed to be zero.
+#' @return A data frame with two columns: 'configuration' (binary string) and 'probability' (corresponding probability).
+#' The return follows the ordering of the Walsh/Hadamard transform to conform with the BEStat framework
+#' @export
+
+generate_ising_to_multinomial = function(Theta, bias = NULL) {
+  p = nrow(Theta)
+  n = 2^p
+  
+  if(is.null(bias)) bias = rep(0, p)
+
+  # Hadamard matrix
+  H = HadamardR::Hadamard_Matrix(n)
+
+  # states from Walsh ordering
+  states = H[,2:(p+1)]
+
+  # compute log weights
+  log_w = numeric(n)
+
+  for(i in 1:n){
+    y = states[i,]
+    log_w[i] = sum(bias * y) + 0.5 * t(y) %*% Theta %*% y
+  }
+
+  w = exp(log_w - max(log_w))
+  probs = w / sum(w)
+
+  colnames(states) = paste0("A",1:p)
+
+  list(
+    states = states,
+    probabilities = probs
+  )
+}
+

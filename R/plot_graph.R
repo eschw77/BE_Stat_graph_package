@@ -145,6 +145,142 @@ plot_ising_true <- function(result,
 }
 
 
+#' Plot Ising Graph from Theta Matrix
+#'
+#' Visualizes an Ising graph directly from a coupling matrix \code{theta}.
+#' An undirected edge is drawn between nodes \eqn{i} and \eqn{j} when
+#' \code{|theta[i, j]| > threshold}. Positive and negative couplings are
+#' colored separately, and edge width scales with \code{|theta[i, j]|}.
+#'
+#' @param theta Numeric square matrix of Ising couplings.
+#' @param threshold Numeric. Only edges with \code{|theta[i, j]| > threshold}
+#'   are plotted. Default: 0.
+#' @param layout Character or function specifying the layout algorithm. Options
+#'   include "circle", "kamada.kawai", "fruchterman.reingold", and "grid".
+#'   Default: "circle".
+#' @param vertex.size Numeric. Size of the vertices. Default: 25.
+#' @param vertex.color Character. Color of the vertices. Default: "lightblue".
+#' @param edge.color.positive Character. Color for positive couplings.
+#'   Default: "steelblue4".
+#' @param edge.color.negative Character. Color for negative couplings.
+#'   Default: "firebrick3".
+#' @param edge.width.range Numeric length-2 vector giving minimum and maximum
+#'   edge width used for scaling by \code{|theta|}. Default: \code{c(1, 5)}.
+#' @param main Character. Main title for the plot.
+#'   Default: "Ising Graph from Theta".
+#' @param show.weights Logical. If TRUE, edge labels show theta values.
+#'   Default: FALSE.
+#'
+#' @return Invisibly returns the igraph object.
+#'
+#' @examples
+#' theta <- matrix(0, 4, 4)
+#' theta[1, 2] <- theta[2, 1] <- 0.7
+#' theta[2, 3] <- theta[3, 2] <- -0.5
+#' theta[3, 4] <- theta[4, 3] <- 0.3
+#' plot_ising_theta(theta, threshold = 0.1, show.weights = TRUE)
+#'
+#' @export
+plot_ising_theta <- function(theta,
+                             threshold = 0,
+                             layout = "circle",
+                             vertex.size = 25,
+                             vertex.color = "lightblue",
+                             edge.color.positive = "steelblue4",
+                             edge.color.negative = "firebrick3",
+                             edge.width.range = c(1, 5),
+                             main = "Ising Graph from Theta",
+                             show.weights = FALSE) {
+
+  if (!requireNamespace("igraph", quietly = TRUE)) {
+    stop("Package 'igraph' is required for plotting. Install it with: install.packages('igraph')")
+  }
+
+  if (!is.matrix(theta) || !is.numeric(theta) || nrow(theta) != ncol(theta)) {
+    stop("theta must be a numeric square matrix.")
+  }
+  if (anyNA(theta)) {
+    stop("theta must not contain NA values.")
+  }
+  if (!is.numeric(threshold) || length(threshold) != 1 || threshold < 0) {
+    stop("threshold must be a single non-negative number.")
+  }
+  if (!is.numeric(edge.width.range) || length(edge.width.range) != 2 ||
+      edge.width.range[1] <= 0 || edge.width.range[2] < edge.width.range[1]) {
+    stop("edge.width.range must be length-2 with 0 < min <= max.")
+  }
+
+  n_nodes <- nrow(theta)
+
+  # Use the upper triangle so each undirected edge appears once.
+  idx <- which(upper.tri(theta) & abs(theta) > threshold, arr.ind = TRUE)
+
+  g <- igraph::graph.empty(n = n_nodes, directed = FALSE)
+  igraph::V(g)$name <- paste0("A", seq_len(n_nodes))
+
+  edge_colors <- character(0)
+  edge_widths <- numeric(0)
+  edge_labels <- NA
+
+  if (nrow(idx) > 0) {
+    edge_vals <- theta[idx]
+    edge_list <- as.vector(t(idx))
+    g <- igraph::add_edges(g, edge_list)
+
+    edge_colors <- ifelse(edge_vals >= 0, edge.color.positive, edge.color.negative)
+
+    abs_vals <- abs(edge_vals)
+    if (diff(range(abs_vals)) < .Machine$double.eps) {
+      edge_widths <- rep(mean(edge.width.range), length(abs_vals))
+    } else {
+      edge_widths <- edge.width.range[1] +
+        (abs_vals - min(abs_vals)) / (max(abs_vals) - min(abs_vals)) *
+        (edge.width.range[2] - edge.width.range[1])
+    }
+
+    edge_labels <- if (show.weights) round(edge_vals, 3) else NA
+  }
+
+  if (is.character(layout)) {
+    layout_func <- switch(layout,
+      "circle" = igraph::layout_in_circle,
+      "kamada.kawai" = igraph::layout_with_kk,
+      "fruchterman.reingold" = igraph::layout_with_fr,
+      "grid" = igraph::layout_on_grid,
+      igraph::layout_in_circle
+    )
+    coords <- layout_func(g)
+  } else {
+    coords <- layout(g)
+  }
+
+  plot(g,
+       layout = coords,
+       vertex.size = vertex.size,
+       vertex.color = vertex.color,
+       vertex.label = igraph::V(g)$name,
+       vertex.label.color = "black",
+       vertex.label.cex = 0.9,
+       edge.color = if (length(edge_colors)) edge_colors else "gray80",
+       edge.width = if (length(edge_widths)) edge_widths else 1,
+       edge.label = edge_labels,
+       edge.label.cex = 0.7,
+       main = main)
+
+  if (nrow(idx) > 0) {
+    legend("bottomright",
+           legend = c("Positive coupling", "Negative coupling"),
+           col = c(edge.color.positive, edge.color.negative),
+           lty = 1,
+           lwd = 2,
+           cex = 0.8,
+           bg = "white")
+  }
+
+  invisible(g)
+}
+
+
 #' Plot Estimated Graph from Conditional Independence Testing
 #'
 #' Visualizes the graph structure estimated from data using conditional independence
@@ -416,3 +552,119 @@ plot_theta_histograms <- function(theta_list, edge_list, main_prefix = "Theta Hi
 
   invisible(NULL)
 }
+
+
+#' Plot Ising multinomial distribution from Theta
+#'
+#' Uses \code{generate_ising_to_multinomial()} to compute the multinomial
+#' distribution induced by an Ising coupling matrix, then displays the
+#' probabilities in a table-style plot (or bar plot) with explicit state labels.
+#'
+#' @param theta Coupling matrix (p x p) defining the Ising model.
+#' @param bias Optional bias vector (length p). If NULL, assumed to be zero.
+#' @param sort_desc Logical. If TRUE, sort rows by decreasing probability.
+#'   Default: TRUE.
+#' @param max_rows Optional integer. If provided, only the top \code{max_rows}
+#'   states are shown in the plot.
+#' @param display Character. One of \code{"table"} (default) or
+#'   \code{"barplot"}.
+#' @param digits Integer. Number of digits for displayed probabilities.
+#'   Default: 5.
+#' @param main Plot title.
+#'
+#' @return Invisibly returns a data frame with columns
+#'   \code{configuration} and \code{probability}.
+#'
+#' @examples
+#' theta <- matrix(0, 3, 3)
+#' theta[1, 2] <- theta[2, 1] <- 0.5
+#' theta[2, 3] <- theta[3, 2] <- -0.4
+#' plot_ising_multinomial(theta, max_rows = 8)
+#'
+#' @export
+plot_ising_multinomial <- function(theta,
+                                   bias = NULL,
+                                   sort_desc = TRUE,
+                                   max_rows = NULL,
+                                   display = c("table", "barplot"),
+                                   digits = 5,
+                                   main = "Multinomial Distribution from Ising Theta") {
+  display <- match.arg(display)
+
+  if (!is.matrix(theta) || !is.numeric(theta) || nrow(theta) != ncol(theta)) {
+    stop("theta must be a numeric square matrix.")
+  }
+  if (!is.null(bias) && (!is.numeric(bias) || length(bias) != nrow(theta))) {
+    stop("bias must be numeric with length equal to nrow(theta), or NULL.")
+  }
+  if (!is.null(max_rows) && (!is.numeric(max_rows) || length(max_rows) != 1 || max_rows < 1)) {
+    stop("max_rows must be NULL or a positive integer.")
+  }
+
+  dist_obj <- generate_ising_to_multinomial(theta, bias)
+  states <- dist_obj$states
+  probs <- dist_obj$probabilities
+  p <- ncol(states)
+
+  config_labels <- apply(states, 1, function(row_vals) {
+    parts <- paste0("A", seq_len(p), "=", row_vals)
+    paste(parts, collapse = ", ")
+  })
+
+  out <- data.frame(
+    configuration = config_labels,
+    probability = probs,
+    stringsAsFactors = FALSE
+  )
+
+  if (sort_desc) {
+    out <- out[order(out$probability, decreasing = TRUE), , drop = FALSE]
+  }
+
+  plot_df <- out
+  if (!is.null(max_rows)) {
+    plot_df <- head(plot_df, as.integer(max_rows))
+  }
+
+  if (display == "barplot") {
+    graphics::barplot(
+      height = plot_df$probability,
+      names.arg = plot_df$configuration,
+      las = 2,
+      cex.names = 0.7,
+      col = "gray70",
+      border = "white",
+      ylab = "Probability",
+      main = main
+    )
+  } else {
+    n_rows <- nrow(plot_df)
+    graphics::plot.new()
+    graphics::title(main = main)
+
+    # Header row
+    top_y <- 0.92
+    row_height <- 0.8 / (n_rows + 1)
+    x_conf <- 0.02
+    x_prob <- 0.98
+
+    graphics::text(x_conf, top_y, "Configuration", adj = c(0, 0.5), font = 2)
+    graphics::text(x_prob, top_y, "Probability", adj = c(1, 0.5), font = 2)
+    graphics::segments(0.02, top_y - row_height / 2, 0.98, top_y - row_height / 2)
+
+    for (i in seq_len(n_rows)) {
+      y <- top_y - i * row_height
+      graphics::text(x_conf, y, plot_df$configuration[i], adj = c(0, 0.5), cex = 0.85)
+      graphics::text(
+        x_prob,
+        y,
+        format(round(plot_df$probability[i], digits = digits), nsmall = digits),
+        adj = c(1, 0.5),
+        cex = 0.85
+      )
+    }
+  }
+
+  invisible(out)
+}
+
