@@ -127,6 +127,8 @@ plot_ising_true <- function(result,
        edge.width = if (total_edges > 0) edge_widths else edge.width,
        edge.lty = if (total_edges > 0) edge_ltys else 1,
        edge.label = edge_labels,
+      edge.label.dist = 0.3,
+      edge.label.degree = pi / 2,
        edge.label.cex = 0.7,
        main = main)
   
@@ -264,6 +266,8 @@ plot_ising_theta <- function(theta,
        edge.color = if (length(edge_colors)) edge_colors else "gray80",
        edge.width = if (length(edge_widths)) edge_widths else 1,
        edge.label = edge_labels,
+      edge.label.dist = 0.3,
+      edge.label.degree = pi / 2,
        edge.label.cex = 0.7,
        main = main)
 
@@ -425,6 +429,8 @@ plot_ising_estimated <- function(samples,
        edge.color = edge_colors,
        edge.width = edge.width,
        edge.label = edge_labels,
+       edge.label.dist = 0.3,
+       edge.label.degree = pi / 2,
        edge.label.cex = 0.7,
        main = main)
   
