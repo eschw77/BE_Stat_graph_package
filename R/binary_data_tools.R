@@ -202,12 +202,15 @@ wilks_LRT_test_e_val <- function(A, n_splits = 2, seed = NULL) {
 
 #' Run an LRT permutation test for binary data
 #' @param A an n x p binary data matrix
-#' @param n_permutations the number of permutations to perform for estimating the null distribution of the test statistic (default is 1000)
+#' @param n_permutations the number of permutations to perform for estimating
+#'   the null distribution of the test statistic (default is 1000)
 #' @param seed an optional random seed for reproducibility of the permutations
-#' @return a matrix of p-values for the likelihood ratio test comparing the full model (with all predictors) to the null model (without each predictor) for each node. The diagonal entries are NA since we do not test nodes against themselves and bottom of matrix is NA since we only compute upper-triangular entries to avoid redundant tests.
-#' The matrix is symmetric with NA on the diagonal, with p-values for the tests in the off-diagonal entries to allow for multiple testing control on repeated tests 
+#' @return a symmetric p x p matrix of p-values for the likelihood ratio test
+#'   comparing the full model (with all predictors) to the null model (without
+#'   predictor k) for each response node j. The diagonal and lower triangle are
+#'   NA; upper-triangle entries [j, k] give the p-value for the edge (j, k).
 #' @export
-
+ 
 wilks_LRT_permutation_test <- function(A, n_permutations = 1000, seed = NULL) {
   if (!is.matrix(A)) {
     stop("A must be a matrix.")
@@ -216,67 +219,93 @@ wilks_LRT_permutation_test <- function(A, n_permutations = 1000, seed = NULL) {
       n_permutations <= 0 || n_permutations %% 1 != 0) {
     stop("n_permutations must be a positive integer.")
   }
-
-  if(!is.null(seed)) {
+ 
+  if (!is.null(seed)) {
     set.seed(seed)
   }
+ 
   n <- nrow(A)
   p <- ncol(A)
-
-  # Compute the observed test statistics
+ 
+  # ------------------------------------------------------------------
+  # 1. Compute the observed test statistics (upper triangle only)
+  # ------------------------------------------------------------------
   observed_stats <- matrix(NA_real_, nrow = p, ncol = p)
-  observed_null_log_likelihoods <- matrix(NA_real_, nrow = p, ncol = p)
-  
+ 
   for (node_j in 1:p) {
-    A_j <- A[, node_j]
-    A_minus_j <- A[, -node_j, drop = FALSE]
-    full_beta <- compute_lse(A_minus_j, A_j)
-    full_log_likelihood <- compute_log_likelihood(full_beta, A_minus_j, A_j)
-    for(k in (1:p)[-node_j]) {
-      if (k <= node_j) {
-        next
-      }
-      local_k <- k - as.integer(k > node_j)
+    A_j        <- A[, node_j]
+    A_minus_j  <- A[, -node_j, drop = FALSE]
+    full_beta  <- compute_lse(A_minus_j, A_j)
+    full_ll    <- compute_log_likelihood(full_beta, A_minus_j, A_j)
+ 
+    for (k in (1:p)[-node_j]) {
+      if (k <= node_j) next                           # upper triangle only
+ 
+      local_k    <- k - as.integer(k > node_j)        # index of col k in A_minus_j
       A_minus_jk <- A_minus_j[, -local_k, drop = FALSE]
-      null_beta <- compute_lse(A_minus_jk, A_j)
-      null_log_likelihood <- compute_log_likelihood(null_beta, A_minus_jk, A_j)
-      observed_null_log_likelihoods[node_j, k] <- null_log_likelihood
-      observed_stats[node_j, k] <- 2 * (full_log_likelihood - null_log_likelihood)
+      null_beta  <- compute_lse(A_minus_jk, A_j)
+      null_ll    <- compute_log_likelihood(null_beta, A_minus_jk, A_j)
+ 
+      observed_stats[node_j, k] <- 2 * (full_ll - null_ll)
     }
   }
-
-  # Initialize a matrix to count how many times the permuted test statistic exceeds the observed statistic
-  count_exceeds <- matrix(0, nrow = p, ncol = p)
-
-  # Perform permutations
-  for (i in 1:p){
+ 
+  # ------------------------------------------------------------------
+  # 2. Permutation loop
+  #
+  #  For each pair (i, k) we keep column k fixed and permute all other
+  #  columns (via the rows) jointly.  Crucially, *both* the full and null likelihoods
+  #  must be re-estimated from the same permuted data.
+  # ------------------------------------------------------------------
+  count_exceeds <- matrix(0L, nrow = p, ncol = p)
+ 
+  for (i in 1:p) {
     for (k in (1:p)[-i]) {
-      if (k <= i) {
-        next
-      }
-      null_log_likelihood_cached <- observed_null_log_likelihoods[i, k]
+      if (k <= i) next                                 # upper triangle only
+ 
+      obs_stat <- observed_stats[i, k]
+ 
       for (perm in 1:n_permutations) {
-        perm_indices <- sample_perm(n)
-        # Keep A_k fixed and permute all other columns jointly.
-        A_perm <- A
-        A_perm[, -k] <- A[perm_indices, -k, drop = FALSE]
-        A_j_perm <- A_perm[, i]
+        perm_idx <- sample_perm(n)
+ 
+        # Keep column k fixed; permute all other columns jointly.
+        A_perm       <- A
+        A_perm[, -k] <- A[perm_idx, -k, drop = FALSE]
+ 
+        # --- full model on permuted data ---
+        A_j_perm       <- A_perm[, i]
         A_minus_j_perm <- A_perm[, -i, drop = FALSE]
         full_beta_perm <- compute_lse(A_minus_j_perm, A_j_perm)
-        full_log_likelihood_perm <- compute_log_likelihood(full_beta_perm, A_minus_j_perm, A_j_perm)
-
-        perm_statistic <- 2 * (full_log_likelihood_perm - null_log_likelihood_cached)
-
-        if (perm_statistic >= observed_stats[i, k]) {
-          count_exceeds[i, k] <- count_exceeds[i, k] + 1
+        full_ll_perm   <- compute_log_likelihood(
+                            full_beta_perm, A_minus_j_perm, A_j_perm)
+ 
+        # --- null model on permuted data (drop column k from predictors) ---
+        local_k_perm    <- k - as.integer(k > i)      # index of col k in A_minus_j_perm
+        A_minus_jk_perm <- A_minus_j_perm[, -local_k_perm, drop = FALSE]
+        null_beta_perm  <- compute_lse(A_minus_jk_perm, A_j_perm)
+        null_ll_perm    <- compute_log_likelihood(
+                            null_beta_perm, A_minus_jk_perm, A_j_perm)
+ 
+        # Both likelihoods come from the same permuted data set.
+        perm_stat <- 2 * (full_ll_perm - null_ll_perm)
+ 
+        if (perm_stat >= obs_stat) {
+          count_exceeds[i, k] <- count_exceeds[i, k] + 1L
         }
       }
     }
   }
-
-  # Compute p-values for the tested entries only, preserving the intended matrix shape.
-  p_values <- matrix(0, nrow = p, ncol = p)
-  tested_entries <- upper.tri(p_values, diag = FALSE)
-  p_values[tested_entries] <- (count_exceeds[tested_entries] + 1) / (n_permutations + 1)
+ 
+  # ------------------------------------------------------------------
+  # 3. Assemble p-value matrix
+  # ------------------------------------------------------------------
+  p_values <- matrix(NA_real_, nrow = p, ncol = p)
+ 
+  upper_idx            <- upper.tri(p_values, diag = FALSE)
+  p_values[upper_idx]  <- (count_exceeds[upper_idx] + 1) / (n_permutations + 1)
+ 
+  # Symmetrise
+  p_values[lower.tri(p_values, diag = FALSE)] <- t(p_values)[lower.tri(p_values, diag = FALSE)]
+  
   return(p_values)
 }
